@@ -1,0 +1,47 @@
+version: '0.0.1'
+
+services:
+  ollama:
+    image: ollama/ollama:latest  # Thay thế "your_ollama_image:latest" bằng hình ảnh Ollama của bạn
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    container_name: ollama
+
+  postgres:
+    image: postgres:latest
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      COLLECTION_NAME: ${COLLECTION_NAME}
+
+    ports:
+      - ${DATABASE_PORT}:${DATABASE_PORT}"
+    container_name: postgres
+
+  chroma:
+    image: server:latest
+    ports:
+      - "8081:8081"  # Cổng mặc định của Chroma
+    container_name: chroma
+
+  createdb:
+    image: postgres:latest
+    environment:
+      DATABASE_NAME: ${DATABASE_NAME}
+    command: createdb -U postgres ${DATABASE_NAME}
+    depends_on:
+      - postgres
+
+
+volumes:
+  ollama:
+    driver: volumes
+  postgres:
+    driver: volumes

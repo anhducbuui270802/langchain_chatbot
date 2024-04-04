@@ -1,0 +1,7 @@
+docker run --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=adb01628907601 -d postgres
+
+docker exec -it postgres createdb -U postgres langchainchat
+
+psql -h localhost -U postgres
+
+
