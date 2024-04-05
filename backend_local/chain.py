@@ -36,7 +36,7 @@ from dotenv import load_dotenv
 
 RESPONSE_TEMPLATE = """\
 You are an expert programmer and problem-solver, tasked with answering any question \
-about Langchain.
+about Streamlit.
 
 Generate a comprehensive and informative answer of 80 words or less for the \
 given question based solely on the provided search results (URL and content). You must \
@@ -69,7 +69,7 @@ user.\
 
 COHERE_RESPONSE_TEMPLATE = """\
 You are an expert programmer and problem-solver, tasked with answering any question \
-about Langchain.
+about Steamlit.
 
 Generate a comprehensive and informative answer of 80 words or less for the \
 given question based solely on the provided search results (URL and content). You must \

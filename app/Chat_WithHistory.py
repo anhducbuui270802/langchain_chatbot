@@ -5,10 +5,10 @@ import datetime
 from langserve import RemoteRunnable
 from typing import Dict, List, Optional, Sequence
 from langchain_core.pydantic_v1 import BaseModel
-
+from langchain_core.runnables import RunnableConfig
 
 chain = RemoteRunnable("http://localhost:8080/chat/")
-logfile = 'TinyLlamaOpenOrca1.1B-stream.txt'
+logfile = './app/chat_history.txt'
 print("loading model...")
 stt = datetime.datetime.now()
 dt = datetime.datetime.now() - stt
@@ -30,16 +30,18 @@ with gr.Blocks(theme='ParityError/Interstellar') as demo:
     with gr.Row():
         with gr.Column(scale=12):
             gr.HTML("<center>"
-            + "<h1>🦙 TinyLlama 1.1B 🐋 OpenOrca 4K context window</h2></center>")  
+            + "<h1>🤖 Chat bot retrieves based on your data 🤖</h1></center>")  
             gr.Markdown("""
-            **Currently Running**: [tinyllama-1.1b-1t-openorca.Q4_K_M.gguf](https://huggingface.co/TheBloke/TinyLlama-1.1B-1T-OpenOrca-GGUF) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  **Chat History Log File**: *TinyLlamaOpenOrca1.1B-stream.txt*  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **License**: Apache 2.0, following the TinyLlama base model.
-            - **Base Model**: PY007/TinyLlama-1.1B-intermediate-step-480k-1T,  Fine tuned on OpenOrca GPT4 subset for 1 epoch,Using CHATML format. The model output is not censored. Use at your own risk.""")         
-        gr.Image(value='./TinyLlama_logo.png', height=90)
+            **Currently Running**:  [Ollama - mistral](https://ollama.com/library/mistral) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  **Chat History Log File**: *chat_history.txt*  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+            - Vector Store: [Chroma](https://docs.trychroma.com/deployment) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+            - Embedding: [OllamaEmbeddings - nomic-embed-text](https://ollama.com/library/nomic-embed-text) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            """)         
+        gr.Image(value='./app/langchain3.webp', height="100%", width='100%')
    # chat and parameters settings
     with gr.Row():
         with gr.Column(scale=4):
             chatbot = gr.Chatbot(height = 425, show_copy_button=True,
-                                 avatar_images = ["./456322.webp","./TinyLlama_logo.png"])
+                                 avatar_images = ["./app/user.png","./app/ai.png"])
             with gr.Row():
                 with gr.Column(scale=14):
                     msg = gr.Textbox(show_label=False, 
@@ -92,7 +94,7 @@ with gr.Blocks(theme='ParityError/Interstellar') as demo:
         writehistory(f"USER: {user_message}")
         return "", history + [[user_message, None]]
 
-    def bot(history,t,m,r,limit):
+    async def bot(history,t,m,r,limit):
         chatHistory = []
         # always keep len(history) <= memory_limit
         if len(history) > limit:
@@ -110,12 +112,10 @@ with gr.Blocks(theme='ParityError/Interstellar') as demo:
             chat_request = ChatRequest(question=history[-1][0], chat_history=chatHistory)
         # Preparing the CHATBOT reply
         history[-1][1] = ""
-        async def gen_ai():
-            async for chunk in chain.astream(chat_request):
-                history[-1][1] += chunk
-                yield history
-
-        gen_ai()
+        async for chunk in chain.astream(chat_request, 
+                                         config=RunnableConfig(temperature=t, max_new_tokens=m, repetition_penalty=r)):
+            history[-1][1] += chunk
+            yield history
         writehistory(f"temperature: {t}, maxNewTokens: {m}, repetitionPenalty: {r}\n---\nBOT: {history}\n\n")
         #Log in the terminal the messages
         print(f"USER: {history[-1][0]}\n---\ntemperature: {t}, maxNewTokens: {m}, repetitionPenalty: {r}\n---\nBOT: {history[-1][1]}\n\n")    
