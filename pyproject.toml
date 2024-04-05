@@ -22,8 +22,6 @@ voyageai = "^0.1.4"
 pillow = "^10.2.0"
 tiktoken = "^0.5.2"
 cohere = "4.45"
-
-
 [tool.poetry.group.lint.dependencies]
 ruff = "^0.2.2"
 
