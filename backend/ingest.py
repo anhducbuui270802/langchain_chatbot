@@ -6,8 +6,8 @@ from parser import langchain_docs_extractor
 from dotenv import load_dotenv
 
 import weaviate
+from langchain_community.vectorstores import Chroma
 from bs4 import BeautifulSoup, SoupStrainer
-from constants import WEAVIATE_DOCS_INDEX_NAME
 from langchain.document_loaders import RecursiveUrlLoader, SitemapLoader
 from langchain.indexes import SQLRecordManager, index
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -25,12 +25,10 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()  # take environment variables from .env.
 
+
+
 def get_embeddings_model() -> Embeddings:
     return OllamaEmbeddings(model='nomic-embed-text')
-
-
-# def get_embeddings_model() -> Embeddings:
-#     return OpenAIEmbeddings(model="text-embedding-3-small", chunk_size=200)
 
 
 def metadata_extractor(meta: dict, soup: BeautifulSoup) -> dict:
@@ -104,35 +102,26 @@ def load_api_docs():
     ).load()
 
 
-def load_web_docs():
-    loader = WebBaseLoader("https://docs.smith.langchain.com/overview")
-    return loader.load()
-
-
 def ingest_docs():
-    WEAVIATE_URL = os.getenv('WEAVIATE_URL', 'default_url')
-    WEAVIATE_API_KEY = os.getenv('WEAVIATE_API_KEY', 'default_authorization')
-    RECORD_MANAGER_DB_URL = os.getenv('RECORD_MANAGER_DB_URL', 'default_record_manager_db_url')
+    DATABASE_HOST = os.getenv('DATABASE_HOST', 'default_database_host')
+    DATABASE_PORT = os.getenv('DATABASE_PORT', 'default_database_port')
+    DATABASE_USERNAME = os.getenv('DATABASE_USERNAME', 'default_database_user')
+    DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD', 'default_database_password')
+    DATABASE_NAME = os.getenv('DATABASE_NAME', 'default_database_name')
+    RECORD_MANAGER_DB_URL = f"postgresql://{DATABASE_USERNAME}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
+    COLLECTION_NAME = os.getenv("COLLECTION_NAME", 'default_collection_name')
 
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
     embedding = get_embeddings_model()
 
-    client = weaviate.Client(
-        url=WEAVIATE_URL,
-        auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY),
-    )
-    vectorstore = Weaviate(
-        client=client,
-        index_name=WEAVIATE_DOCS_INDEX_NAME,
-        text_key="text",
-        embedding=embedding,
-        by_text=False,
-        attributes=["source", "title"],
+    vectorstore = Chroma(
+    collection_name=COLLECTION_NAME,
+    embedding_function=embedding,
     )
 
     record_manager = SQLRecordManager(
-        f"weaviate/{WEAVIATE_DOCS_INDEX_NAME}", db_url=RECORD_MANAGER_DB_URL
+    f"weaviate/{COLLECTION_NAME}", db_url=RECORD_MANAGER_DB_URL
     )
     record_manager.create_schema()
 
@@ -166,19 +155,5 @@ def ingest_docs():
         force_update=(os.environ.get("FORCE_UPDATE") or "false").lower() == "true",
     )
 
-    logger.info(f"Indexing stats: {indexing_stats}")
-    num_vecs = client.query.aggregate(WEAVIATE_DOCS_INDEX_NAME).with_meta_count().do()
-    logger.info(
-        f"LangChain now has this many vectors: {num_vecs}",
-    )
-
 if __name__ == "__main__":
-
-    # WEAVIATE_URL = os.getenv('WEAVIATE_URL', 'default_url')
-    # WEAVIATE_API_KEY = os.getenv('WEAVIATE_API_KEY', 'default_authorization')
-    # RECORD_MANAGER_DB_URL = os.getenv('RECORD_MANAGER_DB_URL', 'default_record_manager_db_url')
-    # print(WEAVIATE_URL)
-    # print(WEAVIATE_API_KEY)
-    # print(RECORD_MANAGER_DB_URL)
-
     ingest_docs()
